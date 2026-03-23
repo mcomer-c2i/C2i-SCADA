@@ -95,24 +95,27 @@ const Gatekeeper = ({ onUnlock }: { onUnlock: () => void }) => {
 };
 
 const Header = ({ activeTab, setActiveTab }: { activeTab: 'ops' | 'analytics', setActiveTab: (tab: 'ops' | 'analytics') => void }) => (
-  <header className="flex justify-between items-center bg-[#11141b] p-3 px-5 rounded-md border border-[#2d343f] mb-3">
-    <div className="flex items-center gap-3">
-      <div className="text-lg font-extrabold text-white">
-        C2i <b className="text-[#007aff]">SCADA</b>
+  <header className="flex flex-col md:flex-row justify-between items-center bg-[#11141b] p-3 md:px-5 rounded-md border border-[#2d343f] mb-3 gap-3 md:gap-0">
+    <div className="flex items-center justify-between w-full md:w-auto">
+      <div className="flex items-center gap-3">
+        <div className="text-lg font-extrabold text-white">
+          C2i <b className="text-[#007aff]">SCADA</b>
+        </div>
+        <div className="w-2 h-2 bg-[#32d74b] rounded-full shadow-[0_0_8px_#32d74b] animate-pulse"></div>
       </div>
-      <div className="w-2 h-2 bg-[#32d74b] rounded-full shadow-[0_0_8px_#32d74b] animate-pulse"></div>
+      <div className="font-bold tracking-[4px] text-sm text-white md:hidden">WTP DEMO</div>
     </div>
-    <div className="font-bold tracking-[4px] text-sm text-white">WTP DEMO</div>
-    <div className="flex gap-2">
+    <div className="hidden md:block font-bold tracking-[4px] text-sm text-white">WTP DEMO</div>
+    <div className="flex gap-2 w-full md:w-auto">
       <button 
         onClick={() => setActiveTab('ops')}
-        className={cn("px-3 py-1.5 rounded text-xs font-bold transition-colors", activeTab === 'ops' ? "bg-[#007aff] text-white border border-[#007aff]" : "bg-[#1a1e26] text-[#94a3b8] border border-[#2d343f] hover:text-white")}
+        className={cn("flex-1 md:flex-none px-3 py-2 md:py-1.5 rounded text-xs font-bold transition-colors text-center", activeTab === 'ops' ? "bg-[#007aff] text-white border border-[#007aff]" : "bg-[#1a1e26] text-[#94a3b8] border border-[#2d343f] hover:text-white")}
       >
-        REAL-TIME OPS
+        REAL-TIME
       </button>
       <button 
         onClick={() => setActiveTab('analytics')}
-        className={cn("px-3 py-1.5 rounded text-xs font-bold transition-colors", activeTab === 'analytics' ? "bg-[#007aff] text-white border border-[#007aff]" : "bg-[#1a1e26] text-[#94a3b8] border border-[#2d343f] hover:text-white")}
+        className={cn("flex-1 md:flex-none px-3 py-2 md:py-1.5 rounded text-xs font-bold transition-colors text-center", activeTab === 'analytics' ? "bg-[#007aff] text-white border border-[#007aff]" : "bg-[#1a1e26] text-[#94a3b8] border border-[#2d343f] hover:text-white")}
       >
         ANALYTICS
       </button>
