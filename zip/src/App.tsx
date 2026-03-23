@@ -135,23 +135,25 @@ const Card = ({ title, children, isTower = false, className }: { title: string; 
   </div>
 );
 
-const SubCard = ({ label, children, className }: { label?: string; children: React.ReactNode; className?: string }) => (
+const SubCard = ({ label, labelColor, children, className }: { label?: React.ReactNode; labelColor?: string; children: React.ReactNode; className?: string }) => (
   <div className={cn("bg-[#1a1e26] p-2.5 rounded border border-white/5", className)}>
-    {label && <span className="text-[0.6rem] font-extrabold text-[#94a3b8] uppercase mb-1.5 block">{label}</span>}
+    {label && <span className="text-[0.6rem] font-extrabold uppercase mb-1.5 block" style={{ color: labelColor || '#94a3b8' }}>{label}</span>}
     {children}
   </div>
 );
 
-const DataLine = ({ label, value, unit, children }: { label: string; value?: React.ReactNode; unit?: string; children?: React.ReactNode }) => (
-  <div className="flex items-center mb-1 gap-2">
-    <span className="text-[#cbd5e1] text-xs w-[105px] shrink-0">{label}</span>
-    {value !== undefined && (
-      <div className="font-bold text-[0.95rem] text-white flex items-baseline gap-1 w-[50px] shrink-0">
-        {value}
-        {unit && <span className="text-[0.65rem] text-[#94a3b8]">{unit}</span>}
-      </div>
-    )}
-    {children}
+const DataLine = ({ label, value, unit, isFault, children }: { label: string; value?: React.ReactNode; unit?: string; isFault?: boolean; children?: React.ReactNode }) => (
+  <div className={cn("flex items-center justify-between mb-1 gap-2 p-1.5 rounded-sm transition-all w-full box-border", isFault ? "border border-[#ff453a] bg-[#ff453a]/10 animate-pulse shadow-[0_0_10px_rgba(255,69,58,0.3)]" : "border border-transparent")}>
+    <div className="flex items-center gap-2">
+      <span className="text-[#cbd5e1] text-xs w-[95px] shrink-0">{label}</span>
+      {value !== undefined && (
+        <div className="font-bold text-[0.95rem] text-white flex items-baseline gap-1 w-[45px] shrink-0">
+          {value}
+          {unit && <span className="text-[0.65rem] text-[#94a3b8]">{unit}</span>}
+        </div>
+      )}
+    </div>
+    <div className="flex-1 flex justify-end">{children}</div>
   </div>
 );
 
@@ -187,45 +189,50 @@ const TankLevel = ({
   height = 100,
   trend = 'stable',
   hideValue = false,
+  color = '#007aff',
 }: {
   value?: number;
   max?: number;
   height?: number;
   trend?: 'up' | 'down' | 'stable';
   hideValue?: boolean;
+  color?: string;
 }) => {
   const pct = Math.min((value / max) * 100, 100);
-  const isCrit = pct < 10;
+  const isCrit = pct < 30;
 
   return (
-    <div className={cn("flex items-center gap-4 py-1", hideValue && "justify-center")}>
+    <div className={cn("flex flex-col items-center gap-2 py-1", hideValue && "justify-center")}>
       <div
-        className="w-[80px] bg-black border border-[#2d343f] relative overflow-hidden rounded-sm shrink-0"
+        className={cn(
+          "w-[80px] border relative overflow-hidden rounded-sm shrink-0",
+          isCrit ? "bg-[#ff453a]/20 border-[#ff453a] animate-pulse shadow-[0_0_15px_rgba(255,69,58,0.3)]" : "bg-black border-[#2d343f]"
+        )}
         style={{ height: `${height}px` }}
       >
         <div
           className={cn(
             "absolute bottom-0 w-full transition-all duration-1000 ease-in-out",
-            isCrit ? "bg-[#ff453a] animate-pulse" : "bg-[#007aff]"
+            isCrit ? "bg-[#ff453a]" : ""
           )}
-          style={{ height: `${pct}%` }}
+          style={{ height: `${pct}%`, backgroundColor: isCrit ? undefined : color }}
         />
       </div>
       {!hideValue && (
-        <>
-          <div className="font-bold text-[0.95rem] text-white flex items-baseline gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="font-bold text-[0.95rem] flex items-baseline gap-1" style={{ color }}>
             {value.toFixed(1)}
             <span className="text-[0.65rem] text-[#94a3b8]">FT</span>
           </div>
           <div
             className={cn(
-              "text-xl font-bold",
+              "text-sm font-bold",
               trend === 'up' ? "text-[#32d74b]" : trend === 'down' ? "text-[#ff453a]" : "text-[#94a3b8]"
             )}
           >
             {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '−'}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -316,11 +323,25 @@ export default function App() {
       const key = `${area}: ${desc}`;
       const hasAlarm = alarmsRef.current.has(key);
 
-      if (pct < 10 && !hasAlarm) {
+      if (pct < 30 && !hasAlarm) {
         alarmsRef.current.add(key);
         setAlarms(new Set(alarmsRef.current));
         addLog(area, desc, `LOW LEVEL ALERT: ${val.toFixed(1)} FT`, true);
-      } else if (pct >= 10 && hasAlarm) {
+      } else if (pct >= 30 && hasAlarm) {
+        alarmsRef.current.delete(key);
+        setAlarms(new Set(alarmsRef.current));
+      }
+    };
+
+    const checkPressureAlarm = (val: number, area: string, desc: string) => {
+      const key = `${area}: ${desc}`;
+      const hasAlarm = alarmsRef.current.has(key);
+
+      if ((val < 40 || val > 90) && !hasAlarm) {
+        alarmsRef.current.add(key);
+        setAlarms(new Set(alarmsRef.current));
+        addLog(area, desc, `PRESSURE ALERT: ${val.toFixed(1)} PSI`, true);
+      } else if (val >= 40 && val <= 90 && hasAlarm) {
         alarmsRef.current.delete(key);
         setAlarms(new Set(alarmsRef.current));
       }
@@ -341,28 +362,33 @@ export default function App() {
         const d = parseNumbers(JSON.parse(raw)) as ScadaData;
 
         if (d.P1) {
-          checkPumpAlarm(d.P1.M1.G === 1, 'Area 1', 'Raw1Pump1');
-          checkPumpAlarm(d.P1.M2.G === 1, 'Area 1', 'Raw1Pump2');
+          checkPumpAlarm(d.P1.M1?.G === 1, 'Area 1', 'Raw1Pump1');
+          checkPumpAlarm(d.P1.M2?.G === 1, 'Area 1', 'Raw1Pump2');
         }
         if (d.P5) {
           checkLevelAlarm(d.P5.L, 15, 'Area 4', 'SludgeLevel');
-          checkPumpAlarm(false, 'Area 4', 'SludgePump');
+          if (d.P5.M) checkPumpAlarm(d.P5.M.G === 1, 'Area 4', 'SludgePump');
         }
         if (d.P4) {
           checkLevelAlarm(d.P4.L, 30, 'Area 5', 'ClearwellLevel');
+          if (d.P4.P !== undefined) checkPressureAlarm(d.P4.P, 'Area 5', 'HSPS Pressure');
           const p4 = d.P4;
           ['M1', 'M2', 'M3', 'M4'].forEach((m) => {
             if (p4[m as keyof typeof p4]) {
-              checkPumpAlarm(false, 'Area 5', `HSPS_Pump${m.slice(1)}`);
+              checkPumpAlarm(p4[m as keyof typeof p4].G === 1, 'Area 5', `HSPS_Pump${m.slice(1)}`);
             }
           });
         }
-        if (d.P6) checkLevelAlarm(d.P6.L, 50, 'Area 6', 'Tank1_level');
+        if (d.P6) {
+          checkLevelAlarm(d.P6.L, 50, 'Area 6', 'Tank1_level');
+          if (d.P6.S !== undefined) checkPressureAlarm(d.P6.S, 'Area 6', 'Suction Pressure');
+          if (d.P6.Y !== undefined) checkPressureAlarm(d.P6.Y, 'Area 6', 'System Pressure');
+        }
         if (d.P7) {
           checkLevelAlarm(d.P7.E, 150, 'Area 7', 'Tank2_ElevTank');
           checkLevelAlarm(d.P7.G, 50, 'Area 7', 'Tank2_Groundtank');
-          checkPumpAlarm(false, 'Area 7', 'Tank2_Pump1');
-          checkPumpAlarm(false, 'Area 7', 'Tank2_Pump2');
+          if (d.P7.M1) checkPumpAlarm(d.P7.M1.G === 1, 'Area 7', 'Tank2_Pump1');
+          if (d.P7.M2) checkPumpAlarm(d.P7.M2.G === 1, 'Area 7', 'Tank2_Pump2');
         }
         if (d.P8) checkLevelAlarm(d.P8.L, 100, 'Area 8', 'Tank3_Level');
 
@@ -419,10 +445,10 @@ export default function App() {
                 <DataLine label="Raw1Flow" value={data.P1?.F?.toFixed(1) ?? '0.0'} unit="GPM" />
               </SubCard>
               <SubCard label="Intake Pumps">
-                <DataLine label="Pump 1" value={Math.round(data.P1?.M1?.Z ?? 0)} unit="%">
+                <DataLine label="Pump 1" value={Math.round(data.P1?.M1?.Z ?? 0)} unit="%" isFault={data.P1?.M1?.G === 1}>
                   <PumpStatus run={data.P1?.M1?.S} fault={data.P1?.M1?.G} />
                 </DataLine>
-                <DataLine label="Pump 2" value="CS">
+                <DataLine label="Pump 2" value="CS" isFault={data.P1?.M2?.G === 1}>
                   <PumpStatus run={data.P1?.M2?.S} fault={data.P1?.M2?.G} />
                 </DataLine>
               </SubCard>
@@ -453,40 +479,46 @@ export default function App() {
             <div className="flex flex-wrap justify-center gap-4 items-stretch w-full">
             {/* Area 4 */}
             <Card title="Area 4: Sludge">
-              <SubCard label="SludgeLevel" className="flex-1 flex flex-col justify-between">
+              <SubCard label="SludgeLevel" labelColor="#007aff" className="flex-1 flex flex-col justify-between">
                 <div>
-                  <TankLevel value={data.P5?.L} max={15} trend={trendP5} />
+                  <TankLevel value={data.P5?.L} max={15} trend={trendP5} color="#007aff" />
                 </div>
                 <MiniChart data={chartData.P5L} />
               </SubCard>
               <SubCard label="Sludge Pumps">
-                <DataLine label="Pump 1" value="CS">
-                  <PumpStatus run={data.P5?.M?.S} fault={0} />
+                <DataLine label="Pump 1" value="CS" isFault={data.P5?.M?.G === 1}>
+                  <PumpStatus run={data.P5?.M?.S} fault={data.P5?.M?.G} />
                 </DataLine>
               </SubCard>
             </Card>
 
-            {/* Area 5 */}
-            <Card title="Area 5: Clearwell & HSPS">
-              <SubCard label="ClearwellLevel">
-                <TankLevel value={data.P4?.L} max={30} trend={trendP4} />
+            {/* Area 5 - Clearwell */}
+            <Card title="Area 5: Clearwell">
+              <SubCard label="ClearwellLevel" labelColor="#007aff" className="flex-1 flex flex-col justify-between">
+                <div>
+                  <TankLevel value={data.P4?.L} max={30} trend={trendP4} color="#007aff" />
+                </div>
                 <MiniChart data={chartData.P4L} />
               </SubCard>
+            </Card>
+
+            {/* Area 5 - HSPS */}
+            <Card title="Area 5: HSPS">
               <SubCard label="HSPS Pressure">
-                <DataLine label="Pressure" value={data.P4?.P?.toFixed(1) ?? '0.0'} unit="PSI" />
+                <DataLine label="Pressure" value={data.P4?.P?.toFixed(1) ?? '0.0'} unit="PSI" isFault={data.P4?.P !== undefined && (data.P4.P < 40 || data.P4.P > 90)} />
               </SubCard>
-              <SubCard label="High Service Pumps">
-                <DataLine label="Pump 1" value={Math.round(data.P4?.M1?.Z ?? 0)} unit="%">
-                  <PumpStatus run={data.P4?.M1?.S} fault={0} />
+              <SubCard label="High Service Pumps" className="flex-1">
+                <DataLine label="Pump 1" value={Math.round(data.P4?.M1?.Z ?? 0)} unit="%" isFault={data.P4?.M1?.G === 1}>
+                  <PumpStatus run={data.P4?.M1?.S} fault={data.P4?.M1?.G} />
                 </DataLine>
-                <DataLine label="Pump 2" value={Math.round(data.P4?.M2?.Z ?? 0)} unit="%">
-                  <PumpStatus run={data.P4?.M2?.S} fault={0} />
+                <DataLine label="Pump 2" value={Math.round(data.P4?.M2?.Z ?? 0)} unit="%" isFault={data.P4?.M2?.G === 1}>
+                  <PumpStatus run={data.P4?.M2?.S} fault={data.P4?.M2?.G} />
                 </DataLine>
-                <DataLine label="Pump 3" value={Math.round(data.P4?.M3?.Z ?? 0)} unit="%">
-                  <PumpStatus run={data.P4?.M3?.S} fault={0} />
+                <DataLine label="Pump 3" value={Math.round(data.P4?.M3?.Z ?? 0)} unit="%" isFault={data.P4?.M3?.G === 1}>
+                  <PumpStatus run={data.P4?.M3?.S} fault={data.P4?.M3?.G} />
                 </DataLine>
-                <DataLine label="Pump 4" value={Math.round(data.P4?.M4?.Z ?? 0)} unit="%">
-                  <PumpStatus run={data.P4?.M4?.S} fault={0} />
+                <DataLine label="Pump 4" value={Math.round(data.P4?.M4?.Z ?? 0)} unit="%" isFault={data.P4?.M4?.G === 1}>
+                  <PumpStatus run={data.P4?.M4?.S} fault={data.P4?.M4?.G} />
                 </DataLine>
               </SubCard>
             </Card>
@@ -496,45 +528,39 @@ export default function App() {
             <div className="flex flex-wrap justify-center gap-4 items-stretch w-full">
             {/* Area 6 */}
             <Card title="Area 6: Water Tower 1" isTower>
-              <SubCard label="Level Tracking" className="flex-1 flex flex-col justify-between">
+              <SubCard label="Level Tracking" labelColor="#007aff" className="flex-1 flex flex-col justify-between">
                 <div>
-                  <TankLevel value={data.P6?.L} max={50} trend={trendP6} />
+                  <TankLevel value={data.P6?.L} max={50} trend={trendP6} color="#007aff" />
                 </div>
                 <MiniChart data={chartData.P6L} />
               </SubCard>
               <SubCard>
-                <DataLine label="Suction Pres." value={data.P6?.S ?? 0} unit="PSI" />
-                <DataLine label="System Pres." value={data.P6?.Y ?? 0} unit="PSI" />
+                <DataLine label="Suction Pres." value={data.P6?.S ?? 0} unit="PSI" isFault={data.P6?.S !== undefined && (data.P6.S < 40 || data.P6.S > 90)} />
+                <DataLine label="System Pres." value={data.P6?.Y ?? 0} unit="PSI" isFault={data.P6?.Y !== undefined && (data.P6.Y < 40 || data.P6.Y > 90)} />
               </SubCard>
             </Card>
 
             {/* Area 7 */}
             <Card title="Area 7: Water Tower 2" isTower>
               <div className="flex gap-2">
-                <SubCard label="Elevated" className="flex-1">
+                <SubCard label="Elevated" labelColor="#007aff" className="flex-1">
                   <div className="flex justify-center">
                     <TankLevel
                       value={data.P7?.E}
                       max={150}
                       trend={trendP7E}
-                      hideValue
+                      color="#007aff"
                     />
                   </div>
-                  <div className="text-center font-bold text-sm mt-1 text-[#007aff]">
-                    {data.P7?.E?.toFixed(1) ?? '0'} FT
-                  </div>
                 </SubCard>
-                <SubCard label="Ground" className="flex-1">
+                <SubCard label="Ground" labelColor="#bf5af2" className="flex-1">
                   <div className="flex justify-center">
                     <TankLevel
                       value={data.P7?.G}
                       max={50}
                       trend={trendP7G}
-                      hideValue
+                      color="#bf5af2"
                     />
-                  </div>
-                  <div className="text-center font-bold text-sm mt-1 text-[#bf5af2]">
-                    {data.P7?.G?.toFixed(1) ?? '0'} FT
                   </div>
                 </SubCard>
               </div>
@@ -548,20 +574,20 @@ export default function App() {
                 />
               </SubCard>
               <SubCard label="Tank 2 Pumps">
-                <DataLine label="Pump 1" value="CS">
-                  <PumpStatus run={data.P7?.M1?.S} fault={0} />
+                <DataLine label="Pump 1" value="CS" isFault={data.P7?.M1?.G === 1}>
+                  <PumpStatus run={data.P7?.M1?.S} fault={data.P7?.M1?.G} />
                 </DataLine>
-                <DataLine label="Pump 2" value="CS">
-                  <PumpStatus run={data.P7?.M2?.S} fault={0} />
+                <DataLine label="Pump 2" value="CS" isFault={data.P7?.M2?.G === 1}>
+                  <PumpStatus run={data.P7?.M2?.S} fault={data.P7?.M2?.G} />
                 </DataLine>
               </SubCard>
             </Card>
 
             {/* Area 8 */}
             <Card title="Area 8: Water Tower 3" isTower>
-              <SubCard className="flex-1 flex flex-col justify-between">
+              <SubCard label="Tank 3 Level" labelColor="#007aff" className="flex-1 flex flex-col justify-between">
                 <div>
-                  <TankLevel value={data.P8?.L} max={100} trend={trendP8} />
+                  <TankLevel value={data.P8?.L} max={100} trend={trendP8} color="#007aff" />
                 </div>
                 <MiniChart data={chartData.P8L} />
               </SubCard>
